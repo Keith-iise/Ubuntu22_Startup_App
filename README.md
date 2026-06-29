@@ -1,7 +1,8 @@
 # StartupApp
 
-Qt/CMake 编写的 Ubuntu 桌面应用生成器。
-
+Ubuntu22.04/20.04 桌面应用生成器。
+可设置应用自启动等功能
+![示例图片](doc/example.png)
 ## 功能
 
 - 设置应用名
