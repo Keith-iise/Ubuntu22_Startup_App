@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QVector>
 
 struct DesktopAppConfig {
     QString appName;
@@ -16,10 +17,21 @@ struct DesktopAppResult {
     QString installedIconPath;
 };
 
+struct DesktopAppInfo {
+    QString appId;
+    QString appName;
+    QString desktopFilePath;
+    QString autostartFilePath;
+    QString installedIconPath;
+};
+
 class DesktopEntryWriter {
 public:
     static DesktopAppResult write(const DesktopAppConfig &config);
     static QString validate(const DesktopAppConfig &config);
+    static QVector<DesktopAppInfo> generatedApplications();
+    static DesktopAppInfo findGeneratedApplication(const QString &appId);
+    static void removeGeneratedApplication(const QString &appId);
 
 private:
     static QString appIdFromName(const QString &name);

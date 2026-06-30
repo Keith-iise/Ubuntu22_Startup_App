@@ -3,6 +3,7 @@
 #include "DesktopEntryWriter.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -78,6 +79,22 @@ void MainWindow::setupUi()
     generateButton = new QPushButton("生成应用", central);
     generateButton->setMinimumHeight(36);
 
+    generatedAppsCombo = new QComboBox(central);
+    generatedAppsCombo->setMinimumHeight(32);
+
+    auto *deleteRow = new QWidget(central);
+    auto *deleteRowLayout = new QHBoxLayout(deleteRow);
+    deleteRowLayout->setContentsMargins(0, 0, 0, 0);
+    deleteRowLayout->addWidget(generatedAppsCombo, 1);
+    auto *refreshButton = new QPushButton("刷新", deleteRow);
+    deleteRowLayout->addWidget(refreshButton);
+    deleteButton = new QPushButton("删除选中应用", deleteRow);
+    deleteButton->setMinimumHeight(32);
+    deleteRowLayout->addWidget(deleteButton);
+
+    auto *deleteForm = new QFormLayout;
+    deleteForm->addRow("已生成应用", deleteRow);
+
     outputText = new QTextEdit(central);
     outputText->setReadOnly(true);
     outputText->setMinimumHeight(120);
@@ -86,6 +103,8 @@ void MainWindow::setupUi()
     rootLayout->addSpacing(8);
     rootLayout->addLayout(form);
     rootLayout->addWidget(generateButton);
+    rootLayout->addSpacing(10);
+    rootLayout->addLayout(deleteForm);
     rootLayout->addWidget(outputText, 1);
 
     setCentralWidget(central);
@@ -93,6 +112,10 @@ void MainWindow::setupUi()
     connect(iconButton, &QPushButton::clicked, this, &MainWindow::chooseIcon);
     connect(scriptButton, &QPushButton::clicked, this, &MainWindow::chooseScript);
     connect(generateButton, &QPushButton::clicked, this, &MainWindow::generateApplication);
+    connect(refreshButton, &QPushButton::clicked, this, &MainWindow::refreshGeneratedApplications);
+    connect(deleteButton, &QPushButton::clicked, this, &MainWindow::deleteSelectedApplication);
+
+    refreshGeneratedApplications();
 }
 
 void MainWindow::chooseIcon()
@@ -155,9 +178,82 @@ void MainWindow::generateApplication()
             appendOutput("开机自启动：未启用");
         }
         appendOutput("");
+        refreshGeneratedApplications();
         QMessageBox::information(this, "完成", "桌面应用已生成。");
     } catch (const std::exception &error) {
         QMessageBox::critical(this, "生成失败", QString::fromUtf8(error.what()));
+    }
+}
+
+void MainWindow::refreshGeneratedApplications()
+{
+    const QString selectedAppId = generatedAppsCombo->currentData().toString();
+    generatedAppsCombo->clear();
+
+    const QVector<DesktopAppInfo> apps = DesktopEntryWriter::generatedApplications();
+    for (const DesktopAppInfo &app : apps) {
+        generatedAppsCombo->addItem(app.appName + " (" + app.appId + ")", app.appId);
+    }
+
+    if (!selectedAppId.isEmpty()) {
+        const int previousIndex = generatedAppsCombo->findData(selectedAppId);
+        if (previousIndex >= 0) {
+            generatedAppsCombo->setCurrentIndex(previousIndex);
+        }
+    }
+
+    const bool hasApps = generatedAppsCombo->count() > 0;
+    generatedAppsCombo->setEnabled(hasApps);
+    deleteButton->setEnabled(hasApps);
+    if (!hasApps) {
+        generatedAppsCombo->addItem("暂无由 StartupApp 生成的应用");
+    }
+}
+
+void MainWindow::deleteSelectedApplication()
+{
+    const QString appId = generatedAppsCombo->currentData().toString();
+    if (appId.isEmpty()) {
+        QMessageBox::information(this, "没有可删除的应用", "当前没有由 StartupApp 生成的应用。");
+        return;
+    }
+
+    const DesktopAppInfo app = DesktopEntryWriter::findGeneratedApplication(appId);
+    if (app.appId.isEmpty()) {
+        QMessageBox::warning(this, "应用不存在", "这个应用可能已经被删除，请刷新列表。");
+        refreshGeneratedApplications();
+        return;
+    }
+
+    const int answer = QMessageBox::question(
+        this,
+        "确认删除",
+        "确定删除应用“" + app.appName + "”吗？\n\n"
+            "将删除：\n" + app.desktopFilePath + "\n" + app.autostartFilePath,
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    try {
+        const bool hadAutostart = QFileInfo::exists(app.autostartFilePath);
+        const bool hadInstalledIcon = QFileInfo::exists(app.installedIconPath);
+        DesktopEntryWriter::removeGeneratedApplication(app.appId);
+        appendOutput("已删除应用：" + app.appName + " (" + app.appId + ")");
+        appendOutput("已删除入口：" + app.desktopFilePath);
+        if (hadAutostart) {
+            appendOutput("已删除自启动：" + app.autostartFilePath);
+        }
+        if (hadInstalledIcon) {
+            appendOutput("已删除图片：" + app.installedIconPath);
+        }
+        appendOutput("");
+        refreshGeneratedApplications();
+        QMessageBox::information(this, "完成", "应用已删除。");
+    } catch (const std::exception &error) {
+        QMessageBox::critical(this, "删除失败", QString::fromUtf8(error.what()));
+        refreshGeneratedApplications();
     }
 }
 
