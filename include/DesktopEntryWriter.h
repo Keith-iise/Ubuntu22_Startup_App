@@ -35,8 +35,11 @@ public:
 
 private:
     static QString appIdFromName(const QString &name);
-    static QString desktopEntryText(const DesktopAppConfig &config, const QString &iconPath);
+    static QString desktopEntryText(
+        const DesktopAppConfig &config, const QString &appId, const QString &iconPath);
     static QString desktopArgumentQuote(const QString &value);
     static void ensureDirectory(const QString &path);
     static QString installIcon(const QString &appId, const QString &sourcePath);
+    static QString writeLauncherScript(const QString &appId, const QString &command);
+    static QString launcherScriptPath(const QString &appId);
 };

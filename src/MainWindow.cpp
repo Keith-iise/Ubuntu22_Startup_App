@@ -206,7 +206,7 @@ void MainWindow::refreshGeneratedApplications()
     generatedAppsCombo->setEnabled(hasApps);
     deleteButton->setEnabled(hasApps);
     if (!hasApps) {
-        generatedAppsCombo->addItem("暂无由 StartupApp 生成的应用");
+        generatedAppsCombo->addItem("暂无可删除的自定义应用");
     }
 }
 
@@ -214,7 +214,7 @@ void MainWindow::deleteSelectedApplication()
 {
     const QString appId = generatedAppsCombo->currentData().toString();
     if (appId.isEmpty()) {
-        QMessageBox::information(this, "没有可删除的应用", "当前没有由 StartupApp 生成的应用。");
+        QMessageBox::information(this, "没有可删除的应用", "当前没有可删除的自定义应用。");
         return;
     }
 

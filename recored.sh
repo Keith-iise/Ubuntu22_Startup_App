@@ -1,0 +1,1 @@
+pkill -INT -f "ros2 bag record"; sleep 2; pkill -f gnome-terminal-server
